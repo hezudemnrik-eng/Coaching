@@ -44,7 +44,18 @@ export async function testConnection(): Promise<ConnectionTestResult> {
     if (!res.ok) {
       return { ok: false, message: `Unerwarteter Fehler von GitHub (${res.status}).` }
     }
-    return { ok: true, message: 'Verbindung erfolgreich – Repo erreichbar.' }
+    // Ein öffentliches Repo ist mit jedem gültigen Token lesbar - ob das Token auch schreiben
+    // darf, verrät erst das Feld `permissions`.
+    const data = (await res.json().catch(() => ({}))) as { full_name?: string; permissions?: { push?: boolean } }
+    if (data.permissions?.push !== true) {
+      return {
+        ok: false,
+        message:
+          `Repo ${data.full_name ?? ''} gefunden, aber das Token hat keinen Schreibzugriff darauf. ` +
+          'Beim Token das Repo freigeben und "Contents: Read and write" setzen.',
+      }
+    }
+    return { ok: true, message: `Verbindung erfolgreich – ${data.full_name ?? 'Repo'} erreichbar, Schreibzugriff ok.` }
   } catch {
     return { ok: false, message: 'Keine Verbindung möglich (kein Internet oder Repo nicht erreichbar).' }
   }
@@ -248,6 +259,13 @@ async function putFile(path: string, content: string, commitMessage: string, sha
   if (res.status === 409 || res.status === 422) {
     throw new ObsidianSyncConflictError(
       'Konflikt: Datei wurde zwischenzeitlich geändert. Beim nächsten Sync wird es erneut versucht.',
+    )
+  }
+  if (res.status === 404) {
+    // GitHub antwortet mit 404 statt 403, wenn das Token das Repo nicht schreiben darf.
+    throw new ObsidianSyncError(
+      `"${path}" konnte nicht gespeichert werden: Das Token hat keinen Schreibzugriff auf ` +
+        `${settings.username}/${settings.repo} (404). Bitte "Verbindung testen".`,
     )
   }
   if (!res.ok) {
