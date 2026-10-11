@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/Coaching-/',
+  base: '/Coaching/',
   // Zeitpunkt des Builds - steht im Einstellungsmenü, damit man sieht, welche Version läuft.
   define: {
     __APP_BUILD__: JSON.stringify(new Date().toISOString()),
@@ -28,8 +28,8 @@ export default defineConfig({
         background_color: '#000000',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/Coaching-/',
-        scope: '/Coaching-/',
+        start_url: '/Coaching/',
+        scope: '/Coaching/',
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
