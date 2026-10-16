@@ -162,11 +162,16 @@ export default function WorkoutLogPage() {
     const log = await getOrCreateWorkoutLog(athlete.id, selectedDate)
     await ensureStarted(log)
     const existing = await db.workoutLogExercises.where('workoutLogId').equals(log.id).toArray()
+    const exercise = exerciseMap.get(exerciseId)
+    // Sitz/Polster bleiben meist von Einheit zu Einheit gleich - deshalb mit dem letzten Wert vorbelegt.
+    const last = exercise?.trackSeat || exercise?.trackPad ? await getLastExercisePerformance(athlete.id, exerciseId, selectedDate) : undefined
     await db.workoutLogExercises.add({
       id: crypto.randomUUID(),
       workoutLogId: log.id,
       exerciseId,
       order: nextOrder(existing),
+      seat: exercise?.trackSeat ? last?.seat : undefined,
+      pad: exercise?.trackPad ? last?.pad : undefined,
     })
   }
 
@@ -198,8 +203,16 @@ export default function WorkoutLogPage() {
       let order = nextOrder(existingRows)
       for (let i = 0; i < newPlanRows.length; i++) {
         const pe = newPlanRows[i]
+        const exercise = exerciseMap.get(pe.exerciseId)
         const logExerciseId = crypto.randomUUID()
-        await db.workoutLogExercises.add({ id: logExerciseId, workoutLogId: log.id, exerciseId: pe.exerciseId, order: order++ })
+        await db.workoutLogExercises.add({
+          id: logExerciseId,
+          workoutLogId: log.id,
+          exerciseId: pe.exerciseId,
+          order: order++,
+          seat: exercise?.trackSeat ? lastPerformances[i]?.seat : undefined,
+          pad: exercise?.trackPad ? lastPerformances[i]?.pad : undefined,
+        })
         await createSetsFromPlanExercise(logExerciseId, pe, lastPerformances[i]?.sets)
       }
     })
@@ -329,9 +342,14 @@ export default function WorkoutLogPage() {
                       exerciseId={row.exerciseId}
                       exerciseName={exerciseMap.get(row.exerciseId)?.name}
                       notes={row.notes}
+                      exerciseNotes={exerciseMap.get(row.exerciseId)?.notes}
                       muscleGroup={exerciseMap.get(row.exerciseId)?.muscleGroup}
                       imageDataUrl={exerciseMap.get(row.exerciseId)?.imageDataUrl}
                       weightStepKg={exerciseMap.get(row.exerciseId)?.weightStepKg}
+                      trackSeat={exerciseMap.get(row.exerciseId)?.trackSeat}
+                      trackPad={exerciseMap.get(row.exerciseId)?.trackPad}
+                      seat={row.seat}
+                      pad={row.pad}
                       planExercise={planExerciseByExerciseId.get(row.exerciseId)}
                       athleteId={athlete.id}
                       date={selectedDate}
@@ -434,9 +452,14 @@ function WorkoutExerciseRow({
   exerciseId,
   exerciseName,
   notes,
+  exerciseNotes,
   muscleGroup,
   imageDataUrl,
   weightStepKg,
+  trackSeat,
+  trackPad,
+  seat,
+  pad,
   planExercise,
   athleteId,
   date,
@@ -450,9 +473,15 @@ function WorkoutExerciseRow({
   exerciseId: string
   exerciseName?: string
   notes?: string
+  /** Feste Notiz der Übung selbst (Übungsdatenbank) - bleibt über alle Einheiten gleich. */
+  exerciseNotes?: string
   muscleGroup?: string
   imageDataUrl?: string
   weightStepKg?: number
+  trackSeat?: boolean
+  trackPad?: boolean
+  seat?: number
+  pad?: number
   planExercise?: TrainingPlanExercise
   athleteId: string
   date: string
@@ -561,6 +590,33 @@ function WorkoutExerciseRow({
                 <span className="rounded-full bg-surface-2 px-2 py-1 text-muted">
                   Vorher = {new Date(`${lastPerformance.date}T00:00:00`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
                 </span>
+              )}
+            </div>
+          )}
+
+          {exerciseNotes && <p className="text-xs text-muted">{exerciseNotes}</p>}
+
+          {(trackSeat || trackPad) && (
+            <div className="grid grid-cols-2 gap-2">
+              {trackSeat && (
+                <Field label="Sitz">
+                  <DecimalInput
+                    value={seat}
+                    onChange={(n) => db.workoutLogExercises.update(rowId, { seat: n })}
+                    aria-label="Sitz-Einstellung"
+                    placeholder="–"
+                  />
+                </Field>
+              )}
+              {trackPad && (
+                <Field label="Polster">
+                  <DecimalInput
+                    value={pad}
+                    onChange={(n) => db.workoutLogExercises.update(rowId, { pad: n })}
+                    aria-label="Polster-Einstellung"
+                    placeholder="–"
+                  />
+                </Field>
               )}
             </div>
           )}

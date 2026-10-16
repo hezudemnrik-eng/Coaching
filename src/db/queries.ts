@@ -359,7 +359,7 @@ export async function getLastExercisePerformance(
   athleteId: string,
   exerciseId: string,
   beforeDate: string,
-): Promise<{ date: string; sets: WorkoutSet[] } | undefined> {
+): Promise<{ date: string; sets: WorkoutSet[]; seat?: number; pad?: number } | undefined> {
   const logs = await db.workoutLogs.where('athleteId').equals(athleteId).reverse().sortBy('date')
   for (const log of logs) {
     if (log.date >= beforeDate) continue
@@ -370,7 +370,7 @@ export async function getLastExercisePerformance(
       .first()
     if (logExercise) {
       const sets = await db.workoutSets.where('workoutLogExerciseId').equals(logExercise.id).sortBy('setNumber')
-      return { date: log.date, sets }
+      return { date: log.date, sets, seat: logExercise.seat, pad: logExercise.pad }
     }
   }
   return undefined

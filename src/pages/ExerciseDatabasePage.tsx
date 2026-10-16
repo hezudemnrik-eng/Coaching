@@ -157,7 +157,17 @@ function ExerciseSheet({
   onClose: () => void
 }) {
   const existing = exercise && exercise !== 'new' ? exercise : undefined
-  const [form, setForm] = useState<{ name: string; muscleGroup: MuscleGroup; imageDataUrl?: string; primaryMuscle?: Muscle; secondaryMuscles?: Muscle[]; weightStepKg?: number }>(
+  const [form, setForm] = useState<{
+    name: string
+    muscleGroup: MuscleGroup
+    imageDataUrl?: string
+    primaryMuscle?: Muscle
+    secondaryMuscles?: Muscle[]
+    weightStepKg?: number
+    trackSeat?: boolean
+    trackPad?: boolean
+    notes?: string
+  }>(
     existing
       ? {
           name: existing.name,
@@ -166,6 +176,9 @@ function ExerciseSheet({
           primaryMuscle: existing.primaryMuscle,
           secondaryMuscles: existing.secondaryMuscles,
           weightStepKg: existing.weightStepKg,
+          trackSeat: existing.trackSeat,
+          trackPad: existing.trackPad,
+          notes: existing.notes,
         }
       : { name: initialName, muscleGroup: MUSCLE_GROUPS[0] },
   )
@@ -188,6 +201,9 @@ function ExerciseSheet({
       primaryMuscle: form.primaryMuscle,
       secondaryMuscles: form.secondaryMuscles?.length ? form.secondaryMuscles : undefined,
       weightStepKg: form.weightStepKg,
+      trackSeat: form.trackSeat || undefined,
+      trackPad: form.trackPad || undefined,
+      notes: form.notes?.trim() || undefined,
     }
     if (existing) await db.exercises.update(existing.id, values)
     else await db.exercises.add({ id: crypto.randomUUID(), ...values })
@@ -279,6 +295,39 @@ function ExerciseSheet({
             </option>
           ))}
         </Select>
+      </Field>
+      <Field label="Erfassung im Trainingslog">
+        <div className="flex flex-wrap gap-1.5">
+          {([
+            ['trackSeat', 'Sitz'],
+            ['trackPad', 'Polster'],
+          ] as const).map(([key, label]) => {
+            const on = !!form[key]
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setForm({ ...form, [key]: !on })}
+                className={`rounded-full px-2.5 py-1 text-xs transition active:scale-95 ${on ? 'bg-accent font-medium text-accent-fg' : 'bg-surface-2 text-fg'}`}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+        <p className="mt-1 text-[11px] text-muted">
+          Blendet im Trainingslog je ein Zahlenfeld für die Sitz- bzw. Polster-Einstellung der Maschine ein.
+        </p>
+      </Field>
+      <Field label="Notizen (z.B. Technik, Geräte-Einstellung)">
+        <textarea
+          value={form.notes ?? ''}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          rows={2}
+          placeholder="Bleibt bei dieser Übung gespeichert"
+          className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-fg outline-none focus:border-accent"
+        />
       </Field>
       <ImageField value={form.imageDataUrl} onChange={(imageDataUrl) => setForm({ ...form, imageDataUrl })} />
       {error && <p className="text-xs text-danger">{error}</p>}

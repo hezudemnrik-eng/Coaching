@@ -146,6 +146,12 @@ async function dedupeExercises(): Promise<number> {
       if (withGroup) patch.muscleGroup = withGroup.muscleGroup
     }
     if (!keeper.favorite && group.some((e) => e.favorite)) patch.favorite = true
+    if (!keeper.trackSeat && group.some((e) => e.trackSeat)) patch.trackSeat = true
+    if (!keeper.trackPad && group.some((e) => e.trackPad)) patch.trackPad = true
+    if (!keeper.notes?.trim()) {
+      const withNotes = group.find((e) => e.notes?.trim())
+      if (withNotes) patch.notes = withNotes.notes
+    }
     if (Object.keys(patch).length > 0) await db.exercises.update(keeper.id, patch)
 
     for (const loser of losers) {
