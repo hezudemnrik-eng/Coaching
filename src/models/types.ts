@@ -184,8 +184,16 @@ export interface Exercise {
   primaryMuscle?: Muscle // Hauptmuskel für die Heatmap; ohne wird er aus dem Namen erkannt
   secondaryMuscles?: Muscle[] // mitarbeitende Muskeln (zählen im Wochenvolumen halb)
   weightStepKg?: number // Sprung der ± Knöpfe beim Gewicht; ohne wird er gelernt bzw. geraten
-  trackSeat?: boolean // Sitz-Einstellung der Maschine wird je Einheit im Trainingslog erfasst
-  trackPad?: boolean // Polster-Einstellung der Maschine wird je Einheit im Trainingslog erfasst
+  trackSeat?: boolean // Sitz-Einstellung der Maschine wird im Trainingslog erfasst
+  trackPad?: boolean // Polster-Einstellung der Maschine wird im Trainingslog erfasst
+  trackCableHeight?: boolean // Kabelturmhöhe wird im Trainingslog erfasst
+  trackBackrest?: boolean // Rückenlehnen-Einstellung (z.B. Schrägbank) wird im Trainingslog erfasst
+  // Die folgenden Werte gehören fest zur Übung, nicht zur einzelnen Trainingseinheit - eine
+  // Änderung im Log gilt für alle künftigen (und bereits erfassten) Einheiten dieser Übung.
+  seat?: number
+  pad?: number
+  cableHeight?: number
+  backrest?: number
   notes?: string // feste Notiz zur Übung (z.B. Technik, Geräte-Einstellung) - bleibt über alle Einheiten hinweg erhalten
 }
 
@@ -226,8 +234,6 @@ export interface WorkoutLogExercise {
   exerciseId: string
   order: number
   notes?: string
-  seat?: number // Sitz-Einstellung dieser Einheit, falls bei der Übung aktiviert
-  pad?: number // Polster-Einstellung dieser Einheit, falls bei der Übung aktiviert
 }
 
 export interface WorkoutSet {

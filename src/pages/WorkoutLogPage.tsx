@@ -10,7 +10,7 @@ import { useUnits } from '../lib/units'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { getLastExercisePerformance, getOrCreateWorkoutLog, todayIso } from '../db/queries'
-import type { Athlete, TrainingPlanExercise, WorkoutLog, WorkoutSet } from '../models/types'
+import type { Athlete, Exercise, TrainingPlanExercise, WorkoutLog, WorkoutSet } from '../models/types'
 import { Button, Card, DecimalInput, Field, Input, PageSkeleton, Select, StatBadge } from '../components/ui'
 import CollapsibleCard from '../components/CollapsibleCard'
 import { SortableItem } from '../components/Sortable'
@@ -162,16 +162,11 @@ export default function WorkoutLogPage() {
     const log = await getOrCreateWorkoutLog(athlete.id, selectedDate)
     await ensureStarted(log)
     const existing = await db.workoutLogExercises.where('workoutLogId').equals(log.id).toArray()
-    const exercise = exerciseMap.get(exerciseId)
-    // Sitz/Polster bleiben meist von Einheit zu Einheit gleich - deshalb mit dem letzten Wert vorbelegt.
-    const last = exercise?.trackSeat || exercise?.trackPad ? await getLastExercisePerformance(athlete.id, exerciseId, selectedDate) : undefined
     await db.workoutLogExercises.add({
       id: crypto.randomUUID(),
       workoutLogId: log.id,
       exerciseId,
       order: nextOrder(existing),
-      seat: exercise?.trackSeat ? last?.seat : undefined,
-      pad: exercise?.trackPad ? last?.pad : undefined,
     })
   }
 
@@ -203,16 +198,8 @@ export default function WorkoutLogPage() {
       let order = nextOrder(existingRows)
       for (let i = 0; i < newPlanRows.length; i++) {
         const pe = newPlanRows[i]
-        const exercise = exerciseMap.get(pe.exerciseId)
         const logExerciseId = crypto.randomUUID()
-        await db.workoutLogExercises.add({
-          id: logExerciseId,
-          workoutLogId: log.id,
-          exerciseId: pe.exerciseId,
-          order: order++,
-          seat: exercise?.trackSeat ? lastPerformances[i]?.seat : undefined,
-          pad: exercise?.trackPad ? lastPerformances[i]?.pad : undefined,
-        })
+        await db.workoutLogExercises.add({ id: logExerciseId, workoutLogId: log.id, exerciseId: pe.exerciseId, order: order++ })
         await createSetsFromPlanExercise(logExerciseId, pe, lastPerformances[i]?.sets)
       }
     })
@@ -340,16 +327,7 @@ export default function WorkoutLogPage() {
                       handle={handle}
                       rowId={row.id}
                       exerciseId={row.exerciseId}
-                      exerciseName={exerciseMap.get(row.exerciseId)?.name}
-                      notes={row.notes}
-                      exerciseNotes={exerciseMap.get(row.exerciseId)?.notes}
-                      muscleGroup={exerciseMap.get(row.exerciseId)?.muscleGroup}
-                      imageDataUrl={exerciseMap.get(row.exerciseId)?.imageDataUrl}
-                      weightStepKg={exerciseMap.get(row.exerciseId)?.weightStepKg}
-                      trackSeat={exerciseMap.get(row.exerciseId)?.trackSeat}
-                      trackPad={exerciseMap.get(row.exerciseId)?.trackPad}
-                      seat={row.seat}
-                      pad={row.pad}
+                      exercise={exerciseMap.get(row.exerciseId)}
                       planExercise={planExerciseByExerciseId.get(row.exerciseId)}
                       athleteId={athlete.id}
                       date={selectedDate}
@@ -450,16 +428,7 @@ function WorkoutExerciseRow({
   onSetCompleted,
   rowId,
   exerciseId,
-  exerciseName,
-  notes,
-  exerciseNotes,
-  muscleGroup,
-  imageDataUrl,
-  weightStepKg,
-  trackSeat,
-  trackPad,
-  seat,
-  pad,
+  exercise,
   planExercise,
   athleteId,
   date,
@@ -471,23 +440,15 @@ function WorkoutExerciseRow({
   onSetCompleted: (restSeconds?: number) => void
   rowId: string
   exerciseId: string
-  exerciseName?: string
-  notes?: string
-  /** Feste Notiz der Übung selbst (Übungsdatenbank) - bleibt über alle Einheiten gleich. */
-  exerciseNotes?: string
-  muscleGroup?: string
-  imageDataUrl?: string
-  weightStepKg?: number
-  trackSeat?: boolean
-  trackPad?: boolean
-  seat?: number
-  pad?: number
+  exercise?: Exercise
   planExercise?: TrainingPlanExercise
   athleteId: string
   date: string
   onSwap: () => void
   onDelete: () => void
 }) {
+  const exerciseName = exercise?.name
+  const weightStepKg = exercise?.weightStepKg
   const sets = useLiveQuery(() => db.workoutSets.where('workoutLogExerciseId').equals(rowId).sortBy('setNumber'), [rowId]) ?? []
   const lastPerformance = useLiveQuery(
     () => (exerciseId ? getLastExercisePerformance(athleteId, exerciseId, date) : undefined),
@@ -517,7 +478,7 @@ function WorkoutExerciseRow({
   const longPressed = useRef(false)
 
   const [expanded, setExpanded] = useState(true)
-  const [notesOpen, setNotesOpen] = useState(!!notes)
+  const [notesOpen, setNotesOpen] = useState(!!exercise?.notes)
 
   const doneCount = sets.filter((s) => s.done).length
   const allDone = sets.length > 0 && doneCount === sets.length
@@ -558,7 +519,7 @@ function WorkoutExerciseRow({
     <div className={`reveal flex flex-col gap-2 rounded-2xl border bg-surface p-3 shadow-lg shadow-black/30 transition-colors duration-300 ${allDone ? 'border-ok/50' : 'border-border'}`}>
       <div className="flex items-center gap-2">
         {handle}
-        {imageDataUrl && <img src={imageDataUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />}
+        {exercise?.imageDataUrl && <img src={exercise.imageDataUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />}
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -568,7 +529,7 @@ function WorkoutExerciseRow({
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold text-fg">{exerciseName ?? 'Übung wählen …'}</span>
             <span className="block truncate text-xs text-muted">
-              {[muscleGroup, sets.length > 0 ? `${doneCount}/${sets.length} Sätze` : 'Noch keine Sätze'].filter(Boolean).join(' · ')}
+              {[exercise?.muscleGroup, sets.length > 0 ? `${doneCount}/${sets.length} Sätze` : 'Noch keine Sätze'].filter(Boolean).join(' · ')}
             </span>
           </span>
           <ChevronDown size={16} className={`shrink-0 text-muted transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
@@ -594,26 +555,46 @@ function WorkoutExerciseRow({
             </div>
           )}
 
-          {exerciseNotes && <p className="text-xs text-muted">{exerciseNotes}</p>}
-
-          {(trackSeat || trackPad) && (
+          {/* Geräte-Einstellungen hängen an der Übung selbst, nicht an der einzelnen Einheit -
+              eine Änderung hier gilt für jede künftige (und bereits erfasste) Einheit dieser Übung. */}
+          {(exercise?.trackSeat || exercise?.trackPad || exercise?.trackCableHeight || exercise?.trackBackrest) && (
             <div className="grid grid-cols-2 gap-2">
-              {trackSeat && (
+              {exercise.trackSeat && (
                 <Field label="Sitz">
                   <DecimalInput
-                    value={seat}
-                    onChange={(n) => db.workoutLogExercises.update(rowId, { seat: n })}
+                    value={exercise.seat}
+                    onChange={(n) => db.exercises.update(exerciseId, { seat: n })}
                     aria-label="Sitz-Einstellung"
                     placeholder="–"
                   />
                 </Field>
               )}
-              {trackPad && (
+              {exercise.trackPad && (
                 <Field label="Polster">
                   <DecimalInput
-                    value={pad}
-                    onChange={(n) => db.workoutLogExercises.update(rowId, { pad: n })}
+                    value={exercise.pad}
+                    onChange={(n) => db.exercises.update(exerciseId, { pad: n })}
                     aria-label="Polster-Einstellung"
+                    placeholder="–"
+                  />
+                </Field>
+              )}
+              {exercise.trackCableHeight && (
+                <Field label="Kabelturmhöhe">
+                  <DecimalInput
+                    value={exercise.cableHeight}
+                    onChange={(n) => db.exercises.update(exerciseId, { cableHeight: n })}
+                    aria-label="Kabelturmhöhe"
+                    placeholder="–"
+                  />
+                </Field>
+              )}
+              {exercise.trackBackrest && (
+                <Field label="Rückenlehne">
+                  <DecimalInput
+                    value={exercise.backrest}
+                    onChange={(n) => db.exercises.update(exerciseId, { backrest: n })}
+                    aria-label="Rückenlehnen-Einstellung"
                     placeholder="–"
                   />
                 </Field>
@@ -737,9 +718,9 @@ function WorkoutExerciseRow({
 
           {notesOpen && (
             <Input
-              value={notes ?? ''}
-              onChange={(e) => db.workoutLogExercises.update(rowId, { notes: e.target.value })}
-              placeholder="Notiz zur Übung (z.B. Griff, Technik)"
+              value={exercise?.notes ?? ''}
+              onChange={(e) => db.exercises.update(exerciseId, { notes: e.target.value })}
+              placeholder="Notiz zur Übung (z.B. Griff, Technik) – bleibt an der Übung gespeichert"
               aria-label="Notiz zur Übung"
             />
           )}

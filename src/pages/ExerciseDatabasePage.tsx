@@ -166,6 +166,8 @@ function ExerciseSheet({
     weightStepKg?: number
     trackSeat?: boolean
     trackPad?: boolean
+    trackCableHeight?: boolean
+    trackBackrest?: boolean
     notes?: string
   }>(
     existing
@@ -178,6 +180,8 @@ function ExerciseSheet({
           weightStepKg: existing.weightStepKg,
           trackSeat: existing.trackSeat,
           trackPad: existing.trackPad,
+          trackCableHeight: existing.trackCableHeight,
+          trackBackrest: existing.trackBackrest,
           notes: existing.notes,
         }
       : { name: initialName, muscleGroup: MUSCLE_GROUPS[0] },
@@ -203,6 +207,8 @@ function ExerciseSheet({
       weightStepKg: form.weightStepKg,
       trackSeat: form.trackSeat || undefined,
       trackPad: form.trackPad || undefined,
+      trackCableHeight: form.trackCableHeight || undefined,
+      trackBackrest: form.trackBackrest || undefined,
       notes: form.notes?.trim() || undefined,
     }
     if (existing) await db.exercises.update(existing.id, values)
@@ -301,6 +307,8 @@ function ExerciseSheet({
           {([
             ['trackSeat', 'Sitz'],
             ['trackPad', 'Polster'],
+            ['trackCableHeight', 'Kabelturmhöhe'],
+            ['trackBackrest', 'Rückenlehne'],
           ] as const).map(([key, label]) => {
             const on = !!form[key]
             return (
@@ -317,7 +325,7 @@ function ExerciseSheet({
           })}
         </div>
         <p className="mt-1 text-[11px] text-muted">
-          Blendet im Trainingslog je ein Zahlenfeld für die Sitz- bzw. Polster-Einstellung der Maschine ein.
+          Blendet im Trainingslog je ein Zahlenfeld für die gewählten Geräte-Einstellungen ein. Die Werte bleiben an der Übung gespeichert und erscheinen bei jeder künftigen Einheit automatisch wieder.
         </p>
       </Field>
       <Field label="Notizen (z.B. Technik, Geräte-Einstellung)">
