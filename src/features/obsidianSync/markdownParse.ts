@@ -1,5 +1,7 @@
 import { MEAL_TYPES, MUSCLE_GROUPS, SUPPLEMENT_TIMINGS } from '../../models/types'
 import type { MealType, MuscleGroup, SupplementTiming } from '../../models/types'
+import { MUSCLES } from '../../lib/muscles'
+import type { Muscle } from '../../lib/muscles'
 import { VAULT_FORMAT } from './markdownBuild'
 
 /**
@@ -266,6 +268,14 @@ export interface ParsedExerciseRow {
   name: string
   muscleGroup?: MuscleGroup
   favorite: boolean
+  primaryMuscle?: Muscle
+  secondaryMuscles?: Muscle[]
+  weightStepKg?: number
+  seat: { tracked: boolean; value?: number }
+  pad: { tracked: boolean; value?: number }
+  cableHeight: { tracked: boolean; value?: number }
+  backrest: { tracked: boolean; value?: number }
+  notes?: string
 }
 
 function toMuscleGroup(raw: string | undefined): MuscleGroup | undefined {
@@ -273,13 +283,51 @@ function toMuscleGroup(raw: string | undefined): MuscleGroup | undefined {
   return MUSCLE_GROUPS.find((group) => group.toLowerCase() === value)
 }
 
-/** Liest "| Bankdrücken | Brust | ja |" aus Uebungen.md. */
+function toMuscle(raw: string | undefined): Muscle | undefined {
+  const value = raw?.trim().toLowerCase()
+  return MUSCLES.find((muscle) => muscle.toLowerCase() === value)
+}
+
+/** "Bizeps, Schultern" → bekannte Muskeln, unbekannte Namen werden stillschweigend verworfen. */
+function toMuscleList(raw: string | undefined): Muscle[] | undefined {
+  const text = raw?.trim()
+  if (!text) return undefined
+  const muscles = text
+    .split(',')
+    .map((part) => toMuscle(part))
+    .filter((m): m is Muscle => m !== undefined)
+  return muscles.length > 0 ? muscles : undefined
+}
+
+/**
+ * Eine Geräte-Einstellung (Sitz/Polster/Kabelturmhöhe/Rückenlehne): eine Zahl heißt erfasst
+ * mit diesem Wert, "ja" heißt erfasst ohne Wert, eine leere Zelle heißt nicht erfasst.
+ */
+function toTrackedNum(raw: string | undefined): { tracked: boolean; value?: number } {
+  const text = raw?.trim()
+  if (!text || text === '-') return { tracked: false }
+  return { tracked: true, value: parseNumber(text) }
+}
+
+/** Liest "| Bankdrücken | Brust | ja | ... |" aus Uebungen.md. */
 export function parseUebungen(content: string): ParsedExerciseRow[] {
   const rows: ParsedExerciseRow[] = []
   for (const cells of tableCells(stripFrontmatter(content), 'Übung')) {
     const name = parseText(cells[0])
     if (!name) continue
-    rows.push({ name, muscleGroup: toMuscleGroup(cells[1]), favorite: parseBool(cells[2]) })
+    rows.push({
+      name,
+      muscleGroup: toMuscleGroup(cells[1]),
+      favorite: parseBool(cells[2]),
+      primaryMuscle: toMuscle(cells[3]),
+      secondaryMuscles: toMuscleList(cells[4]),
+      weightStepKg: parseNumber(cells[5]),
+      seat: toTrackedNum(cells[6]),
+      pad: toTrackedNum(cells[7]),
+      cableHeight: toTrackedNum(cells[8]),
+      backrest: toTrackedNum(cells[9]),
+      notes: parseText(cells[10]),
+    })
   }
   return rows
 }

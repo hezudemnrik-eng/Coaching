@@ -148,6 +148,24 @@ async function dedupeExercises(): Promise<number> {
     if (!keeper.favorite && group.some((e) => e.favorite)) patch.favorite = true
     if (!keeper.trackSeat && group.some((e) => e.trackSeat)) patch.trackSeat = true
     if (!keeper.trackPad && group.some((e) => e.trackPad)) patch.trackPad = true
+    if (!keeper.trackCableHeight && group.some((e) => e.trackCableHeight)) patch.trackCableHeight = true
+    if (!keeper.trackBackrest && group.some((e) => e.trackBackrest)) patch.trackBackrest = true
+    if (keeper.seat === undefined) {
+      const withSeat = group.find((e) => e.seat !== undefined)
+      if (withSeat) patch.seat = withSeat.seat
+    }
+    if (keeper.pad === undefined) {
+      const withPad = group.find((e) => e.pad !== undefined)
+      if (withPad) patch.pad = withPad.pad
+    }
+    if (keeper.cableHeight === undefined) {
+      const withCableHeight = group.find((e) => e.cableHeight !== undefined)
+      if (withCableHeight) patch.cableHeight = withCableHeight.cableHeight
+    }
+    if (keeper.backrest === undefined) {
+      const withBackrest = group.find((e) => e.backrest !== undefined)
+      if (withBackrest) patch.backrest = withBackrest.backrest
+    }
     if (!keeper.notes?.trim()) {
       const withNotes = group.find((e) => e.notes?.trim())
       if (withNotes) patch.notes = withNotes.notes
