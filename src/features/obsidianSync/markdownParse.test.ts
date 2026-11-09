@@ -435,6 +435,8 @@ describe('parseTrainingsplaene', () => {
 })
 
 describe('parseUebungen', () => {
+  const empty = { tracked: false }
+
   it('liest Muskelgruppe und Favorit, ignoriert unbekannte Gruppen', () => {
     const content = [
       ...buildFrontmatter({ typ: 'uebungen' }),
@@ -445,8 +447,57 @@ describe('parseUebungen', () => {
     ].join('\n')
 
     expect(parseUebungen(content)).toEqual([
-      { name: 'Bankdrücken', muscleGroup: 'Brust', favorite: true },
-      { name: 'Hackenschmidt', muscleGroup: undefined, favorite: false },
+      {
+        name: 'Bankdrücken',
+        muscleGroup: 'Brust',
+        favorite: true,
+        primaryMuscle: undefined,
+        secondaryMuscles: undefined,
+        weightStepKg: undefined,
+        seat: empty,
+        pad: empty,
+        cableHeight: empty,
+        backrest: empty,
+        notes: undefined,
+      },
+      {
+        name: 'Hackenschmidt',
+        muscleGroup: undefined,
+        favorite: false,
+        primaryMuscle: undefined,
+        secondaryMuscles: undefined,
+        weightStepKg: undefined,
+        seat: empty,
+        pad: empty,
+        cableHeight: empty,
+        backrest: empty,
+        notes: undefined,
+      },
+    ])
+  })
+
+  it('liest Hauptmuskel, Nebenmuskeln, Gewichtsschritt, Geräte-Einstellungen und Notiz', () => {
+    const content = [
+      ...buildFrontmatter({ typ: 'uebungen' }),
+      tableRow(['Übung', 'Muskelgruppe', 'Favorit', 'Hauptmuskel', 'Nebenmuskeln', 'Gewichtsschritt (kg)', 'Sitz', 'Polster', 'Kabelturmhöhe', 'Rückenlehne', 'Notiz']),
+      tableSeparator(11),
+      tableRow(['Beinpresse', 'Beine', undefined, 'Quadrizeps', 'Po, Beinbeuger', '5', '4', 'ja', undefined, undefined, 'Sitz Stufe 4']),
+    ].join('\n')
+
+    expect(parseUebungen(content)).toEqual([
+      {
+        name: 'Beinpresse',
+        muscleGroup: 'Beine',
+        favorite: false,
+        primaryMuscle: 'Quadrizeps',
+        secondaryMuscles: ['Po', 'Beinbeuger'],
+        weightStepKg: 5,
+        seat: { tracked: true, value: 4 },
+        pad: { tracked: true, value: undefined },
+        cableHeight: empty,
+        backrest: empty,
+        notes: 'Sitz Stufe 4',
+      },
     ])
   })
 })

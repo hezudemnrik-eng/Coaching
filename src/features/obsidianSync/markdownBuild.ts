@@ -59,3 +59,12 @@ export function fmtNum(n: number | undefined, digits?: number): string | undefin
 export function fmtBool(value: boolean | undefined): string | undefined {
   return value ? 'ja' : undefined
 }
+
+/**
+ * Zelle für eine ein-/ausschaltbare Geräte-Einstellung (z.B. Sitz): der aktuelle Wert, "ja"
+ * wenn erfasst aber noch ohne Wert, sonst leer (nicht erfasst).
+ */
+export function fmtTrackedNum(tracked: boolean | undefined, value: number | undefined): string | undefined {
+  if (!tracked) return undefined
+  return value !== undefined ? String(value) : 'ja'
+}
