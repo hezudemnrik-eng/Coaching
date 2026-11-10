@@ -339,6 +339,7 @@ export default function NutritionLogPage() {
         status={status}
         onDelete={currentLog ? deleteLog : undefined}
         deleteConfirmText="Ernährungstag mit allen Einträgen löschen?"
+        allowFuture
       />
 
       {/* Beim Tageswechsel neu eingeblendet - so sieht man, dass sich der Inhalt geändert hat. */}
